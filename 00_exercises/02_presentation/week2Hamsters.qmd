@@ -1,0 +1,145 @@
+---
+title: "Hamsters"
+bibliography: bib.bib
+author:
+  name: Axel Zweistra
+  orcid: 0009-0000-8790-4608
+  email: a.p.zweistra@uu.nl
+format: 
+  revealjs:
+    logo: hamsterLogo.jpg
+    transition: slide
+editor: visual
+---
+
+## Still image
+
+![](dumbHamster.jpg){fig-align="center"}
+
+## Interactive table
+
+```{r}
+library(DT)
+data <- read.csv("YTD-hamster-2019-2021.csv")
+
+# Make a table
+datatable(data,
+  filter = "top",
+)
+```
+
+## Moving figure
+
+![](hamster.gif){fig-align="center"}
+
+## Hamster Trivia
+
+::: columns
+::: {.column width="40%" style="font-size: 14px;"}
+### Hamster History
+
+Although the Syrian hamster or [golden hamster](https://en.wikipedia.org/wiki/Golden_hamster "Golden hamster") (*Mesocricetus auratus*) was first described scientifically by [George Robert Waterhouse](https://en.wikipedia.org/wiki/George_Robert_Waterhouse "George Robert Waterhouse") in 1839, researchers were not able to successfully breed and domesticate hamsters until 1939.^[\[3\]](https://en.wikipedia.org/wiki/Hamster#cite_note-Barrie-3)^ The entire laboratory and pet populations of Syrian hamsters appear to be descendants of a single brother–sister pairing. These littermates were captured and imported in 1930 from Aleppo in Syria by [Israel Aharoni](https://en.wikipedia.org/wiki/Israel_Aharoni "Israel Aharoni"), a zoologist of the [University of Jerusalem](https://en.wikipedia.org/wiki/Hebrew_University_of_Jerusalem "Hebrew University of Jerusalem").^[\[8\]](https://en.wikipedia.org/wiki/Hamster#cite_note-Fritz-8)^ In Jerusalem, the hamsters bred very successfully. Years later, animals of this original breeding colony were exported to the United States, where Syrian hamsters became a common pet and laboratory animal. Comparative studies of domestic and wild Syrian hamsters have shown reduced genetic variability in the domestic strain. However, the differences in behavioral, chronobiological, morphometrical, hematological, and biochemical parameters are relatively small and fall into the expected range of interstrain variations in other laboratory animals.^[\[9\]](https://en.wikipedia.org/wiki/Hamster#cite_note-Kuhnen,_(2001)-9)^
+:::
+
+::: {.column width="60%" style="font-size: 14px;"}
+### Hamster Etymology {style="font-size: 18px;"}
+
+The name "hamster" is a [loanword](https://en.wikipedia.org/wiki/Loanword "Loanword") from the German, which itself derives from earlier [Middle High German](https://en.wikipedia.org/wiki/Middle_High_German "Middle High German") *hamastra*. It is possibly related to [Old Church Slavonic](https://en.wikipedia.org/wiki/Old_Church_Slavonic "Old Church Slavonic") *khomestoru*, which is either a blend of the root of [Russian](https://en.wikipedia.org/wiki/Russian_language "Russian language") хомяк (*khomyak*) "hamster" and a Baltic word (cf. [Lithuanian](https://en.wikipedia.org/wiki/Lithuanian_language "Lithuanian language"): *staras* "hamster");^[\[10\]](https://en.wikipedia.org/wiki/Hamster#cite_note-10)^ or of Persian origin (cf. [Avestan](https://en.wikipedia.org/wiki/Avestan "Avestan"): *hamaēstar* "oppressor").^[\[11\]](https://en.wikipedia.org/wiki/Hamster#cite_note-11)^ The collective noun for a group of hamsters is "horde".^[\[12\]](https://en.wikipedia.org/wiki/Hamster#cite_note-12)^ In German, the verb *hamstern* is derived from *Hamster*. It means "[to hoard](https://en.wikipedia.org/wiki/Hoarding "Hoarding")".^[\[13\]](https://en.wikipedia.org/wiki/Hamster#cite_note-13)^
+:::
+:::
+
+::: aside
+taken from <https://en.wikipedia.org/wiki/Hamster>
+:::
+
+## Lotka-Volterra equations (for hamsters)
+
+$$
+\begin{align*}
+\frac{dx}{dt} &= \alpha x - \beta xy, \\
+\frac{dy}{dt} &= -\gamma y + \delta xy,
+\end{align*}
+$$
+
+$x$ is the population density of hamsters
+
+the rest follows logically
+
+::: aside
+taken from <https://en.wikipedia.org/wiki/Lotka%E2%80%93Volterra_equations>
+:::
+
+## Need citations?
+
+<br/>
+
+> Hamsters are rodents [@GimenezConti1993].
+
+At least I think so, I didn't read the article.
+
+<br/> <br/> <br/> <br/> <br/> <br/>
+
+::: {#refs}
+:::
+
+## Interesting code
+
+```{r,echo=TRUE,eval=FALSE}
+hamsters <- c("cutie", "fluff", "sprinkles", "eric")
+
+for (i in hamsters){
+  print(
+    paste0("Hamster ", i," runs at ", 
+           round(3000 + rnorm(1,0,300)),
+           " RPM on average.")
+  )
+}
+```
+
+## Interesting hidden code
+
+```{r}
+#| label: fig-hamster
+#| cache: true
+#| echo: false
+#| fig-align: center
+#| fig-width: 8
+#| fig-height: 5
+#| fig-alt: "An animated line graph showing the hamster's activity level over time."
+#| fig-cap: "Daily Activity Level of a Hamster"
+
+library(ggplot2)
+library(gganimate)
+library(dplyr)
+
+set.seed(42)
+days <- 1:30
+activity <- cumsum(rnorm(30, mean = 0.5, sd = 1)) + 10
+hamster_data <- tibble(day = days, activity = activity)
+
+p <- ggplot(hamster_data, aes(x = day, y = activity)) +
+  geom_line(color = "orange", size = 1.5) +
+  geom_point(color = "brown", size = 3) +
+  labs(
+    title = 'Hamster Activity Over Time',
+    x = 'Day',
+    y = 'Activity Level'
+  ) +
+  theme_minimal() +
+  transition_reveal(day)
+
+animate(p, nframes = 60, fps = 10, renderer = gifski_renderer()) 
+```
+
+## Reproducible environment
+
+```{r, echo = TRUE}
+library(renv)
+
+renv::init()
+renv::snapshot()
+```
+
+## renv.lock file
+
+![](images/clipboard-3233743122.png)
