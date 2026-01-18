@@ -1,0 +1,210 @@
+---
+title: "Markdown manuscript"
+author: "A.P. Zweistra"
+format: html
+editor: visual
+bibliography: THESIS Illusionary Traits.bib
+---
+
+### Introduction
+
+This document uses some of my thesis work to show markdown functionality. It is not meant as a complete or clear introduction to the topic discussed. My thesis focuses on statistical confounding in longitudinal structural equation models, and how to correct for their influence. In large parts, it is inspired by recent work by @baileyIllusoryTraitsWrong2024. Below, you can find their figure for the data generation mechanism they use for their simulation (and the one I adapt for my thesis).
+
+![Figure 2 from Bailey et al., 2024.](baileyfig.png)
+
+It describes a cross-lagged panel model with systems of time-varying confounding variables. Luckily for me, they publicly shared the code used for generating data according to this model. One part of their code however, mystified me until I asked my supervisor about it:
+
+> Sigma1 \<- irow(solve(diag(dim(A)\[1\]\^2) - t(A) %x% t(A)) %\*% row(Sigma))
+
+This was very unclear to me, until my supervisor showed me it is the implementation of a result published in @kim2017 . It is the unconditional stationary covariance matrix, used for generating data in stationary processes without a burn-in period.
+
+$$
+\text{vec}(P_{0\mid0})=(I-F\otimes F)^{-1}\text{vec}(Q)
+$$ {#eq-cov}
+
+To show you what all of this results in, I will generate a dataset and show some of the trajectories a case in the dataset could take.
+
+```{r, include=F}
+## random seed and packages 
+set.seed(42)
+
+library(mvtnorm)
+library(ggplot2)
+library(tidyverse)
+
+## Function definitions from Bailey
+row <- function( M ){
+    if( ! ( is.matrix(M) && dim(M)[1] == dim(M)[2] && dim(M)[1]>0 ) ){
+        rowM <- NULL
+    } else {
+        F <- dim(M)[1]
+        rowM <- matrix( NA, nrow=F^2, ncol=1)
+        for ( r in (1:F) ) {
+            for( c in (1:F) ) {
+                rowM[ c+F*(r-1), 1 ] <- M[r,c]
+            }
+        }
+    }
+    return( rowM )
+}
+irow <- function( rowM ){
+    if( ! ( !is.null(rowM) && ( is.matrix(rowM) || (is.array(rowM) && length( which( dim(rowM) > 1 ) ) == 1) ) && dim(rowM)[1]>0 && dim(rowM)[2]==1 ) ){
+        M <- NULL
+    } else {
+        F <- sqrt( length( rowM ) )
+        M <- matrix( NA, nrow=F, ncol=F )
+        for ( r in (1:F) ) {
+            for ( c in (1:F) ) {
+                M[r,c] <- rowM[ c+F*(r-1) ]
+            }
+        }
+    }
+    return( M )
+}
+
+DGM <- function(N = 20000, 
+                autocorr_effects = 0.2, 
+                timepoints = 100, 
+                n_x_confounders = 5, 
+                n_y_confounders = 5,
+                beta_focal = 0.1,
+                beta_covfocal = 0.1,
+                beta_covnofocal = 0.01,
+                sigma = 0.5,
+                seed = 427) 
+  {
+
+  # Set seed for reproducibility
+  set.seed(seed)
+  
+  # Rename some parameters to match the variables used by the original paper
+  T <- timepoints
+  c1 <- n_x_confounders
+  c2 <- n_y_confounders
+  alpha <- autocorr_effects
+  
+  # Helper functions for matrix operations
+  irow <- function(x) matrix(x, nrow = sqrt(length(x)), byrow = TRUE)
+  row <- function(x) as.vector(t(x))
+  
+  # New objects for the simulation
+  ## total number of variables
+  v <- c1 + c2 + 2
+  
+  ## A: Matrix of path coefficients
+  A <- matrix(NA, v, v)
+  diag(A) <- alpha
+  A[lower.tri(A, diag = FALSE)] <- beta_covnofocal 
+  A[upper.tri(A, diag = FALSE)] <- beta_covnofocal
+  
+  c1t <- 3:(2+c1)
+  c2t <- (3+c1):v
+  A[c1t, 1] <- beta_covfocal
+  A[1, c1t] <- beta_covfocal
+  A[c2t, 2] <- beta_covfocal
+  A[2, c2t] <- beta_covfocal
+  A[c1t, c1t][lower.tri(A[c1t, c1t], diag = FALSE)] <- beta_covfocal
+  A[c1t, c1t][upper.tri(A[c1t, c1t], diag = FALSE)] <- beta_covfocal
+  A[c2t, c2t][lower.tri(A[c2t, c2t], diag = FALSE)] <- beta_covfocal
+  A[c2t, c2t][upper.tri(A[c2t, c2t], diag = FALSE)] <- beta_covfocal
+  A[1,2] <- beta_focal
+  A[2,1] <- beta_focal
+  
+  ## Check the max eigenvalue (to check stationarity)
+  max_eigenvalue <- max(eigen(A)$values)
+  if (max_eigenvalue >= 1) {
+    warning(paste("Maximum eigenvalue is", round(max_eigenvalue, 4),"- the system may not be stationary"))
+  }
+  
+  ## Sigma: Var-cov matrix of time-specific residuals
+  Sigma <- diag(rep(sigma, v))
+  
+  ## Sigma1: Stationary Var-cov matrix for the first time point
+  Sigma1 <- irow(solve(diag(dim(A)[1]^2) - t(A) %x% t(A)) %*% row(Sigma))
+  
+  ## Mean1: Stationary means for first time point
+  Mean1 <- matrix(0, nrow = dim(A)[1], ncol = 1)
+  
+  # Generate data ---
+  
+  # create empty dataframe
+  df <- matrix(NA, nrow = N, ncol = 2*T)
+  colnames(df) <- c(paste("x", 1:T, sep = ""), paste("y", 1:T, sep = ""))
+  
+  ## Generate the initial values for X and Y and store them in D
+  D <- rmvnorm(N, mean = Mean1, Sigma1)
+  
+  ## Store the initial data from D to df
+  df[, 1] <- D[, 1]
+  df[, 1+T] <- D[, 2]
+  
+  ## Update D and df till time T
+  for (i in 2:T) {
+    D <- D %*% t(A) + rmvnorm(N, sigma = Sigma)
+    df[, i] <- D[, 1]
+    df[, i+T] <- D[, 2]
+  }
+  
+  # Return results as a list, making sure to also save DGM parameters
+  return(list(
+    data = df,
+    parameters = list(
+      N = N,
+      timepoints = T,
+      n_x_confounders = c1,
+      n_y_confounders = c2,
+      autocorr_effects = alpha,
+      beta_focal = beta_focal,
+      beta_covfocal = beta_covfocal,
+      beta_covnofocal = beta_covnofocal,
+      sigma = sigma,
+      StatCOVmatrix = Sigma1,
+      max_eigenvalue = max_eigenvalue
+    ),
+    coefficient_matrix = A
+  ))
+}
+
+plot_xy_sequences <- function(data, timepoints, n_participants = 5) {
+  
+  # Sample some random participants
+  N <- nrow(data)
+  participants <- sample(1:N, n_participants)
+  
+  # Set up plotting area
+  par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+  
+  # Plot X sequences
+  plot(1:timepoints, data[participants[1], 1:timepoints], 
+       type = "l", col = 1, ylim = range(data[participants, 1:timepoints]),
+       main = "X Over Time", xlab = "Time", ylab = "X Value")
+  
+  for (i in 2:n_participants) {
+    lines(1:timepoints, data[participants[i], 1:timepoints], col = i)
+  }
+  
+  # Plot Y sequences  
+  y_cols <- (timepoints + 1):(2 * timepoints)
+  plot(1:timepoints, data[participants[1], y_cols], 
+       type = "l", col = 1, ylim = range(data[participants, y_cols]),
+       main = "Y Over Time", xlab = "Time", ylab = "Y Value")
+  
+  for (i in 2:n_participants) {
+    lines(1:timepoints, data[participants[i], y_cols], col = i)
+  }
+  
+  # Reset plotting parameters
+  par(mfrow = c(1, 1))
+}
+```
+
+I just loaded in the necessary functions and libraries, but you didn't see it, because I don't want you to!
+
+```{r, output = T, echo = T}
+data <- DGM(N=500, timepoints = 50)
+
+plot_xy_sequences(data$data, 
+                  timepoints = data$parameters$timepoints, n_participants = 3)
+```
+
+But the above figure and code, which shows how the values in the X and Y variables change over time for randomly chosen cases from the dataset, is visible.
