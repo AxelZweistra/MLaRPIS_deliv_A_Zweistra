@@ -1,0 +1,60 @@
+---
+title: "Manuscript"
+author: "Axel Zweistra"
+format: docx
+bibliography: THESIS Illusionary Traits.bib
+editor: visual
+---
+
+```{r, include = F}
+# Load penguins
+library(ggplot2)
+
+# Read data
+penguins <- read.csv("data/data.csv")
+```
+
+### Meet Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org.>
+
+#### Meet the penguins
+
+The penguins data from the [palmerpenguins](https://allisonhorst.github.io/palmerpenguins/) package contains size measurements for 344 penguins from three species observed on three islands in the Palmer Archipelago, Antarctica [@horstPalmerArchipelagoPenguins2022].
+
+![](https://allisonhorst.github.io/palmerpenguins/reference/figures/lter_penguins.png)
+
+Another reference is @hamakerCritiqueCrosslaggedPanel2015.
+
+#### Results
+
+```{r, echo = F}
+# Plot penguins
+ggplot(penguins, 
+       aes(x = `Flipper.Length..mm.`, y = `Culmen.Length..mm.`)) +
+        geom_point(aes(color = Species, shape = Species)) +
+        scale_color_manual(values = c("darkorange","purple","cyan4")) +
+        labs(
+                title = "Flipper and Culmen length",
+                subtitle = "Dimensions for penguins at Palmer Station LTER",
+                x = "Flipper length (mm)", y = "Culmen length (mm)",
+                color = "Penguin species", shape = "Penguin species"
+        ) +
+        theme_minimal()
+```
+
+### Inline code
+
+Sanity check 1 + 1 = `r 1 + 1`
+
+Referring to data: there are `r sum(penguins$Species == 'Adelie Penguin (Pygoscelis adeliae)')` Adelie penguins and `r sum(penguins$Species=='Chinstrap penguin (Pygoscelis antarctica)')` Chinstrap penguins.
+
+The average weight of a Chinstrap penguin in the dataset is `r round(mean(penguins$Body.Mass..g.[penguins$Species=='Chinstrap penguin (Pygoscelis antarctica)']))` grams.
+
+### Sourcing code
+
+```{r}
+source("scripts/do_addition.R")
+
+do_addition(2,2)
+```
