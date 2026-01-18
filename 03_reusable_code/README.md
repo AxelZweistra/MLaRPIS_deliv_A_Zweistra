@@ -2,7 +2,8 @@
 
 Deliverable 3: Reusable `R` code wrapped in an `R` package or `Shiny` app.
 
-- If `R` package, link the package website and your development repository (on GitHub).
-- If `Shiny app`, link the app on a `Shiny` server and your development repository (on GitHub).
+Package can be found at https://github.com/AxelZweistra/ThesisPackage
 
-See course manual for requirements.
+
+[![DOI](https://zenodo.org/badge/1135246476.svg)](https://doi.org/10.5281/zenodo.18281493)
+
